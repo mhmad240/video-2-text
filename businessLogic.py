@@ -1,0 +1,350 @@
+import tempfile
+import sys
+import codecs
+import ssl
+import os
+import subprocess
+import time
+from moviepy.editor import VideoFileClip
+import yt_dlp
+import numpy as np
+
+# 🔧 الإعداد الصحيح لـ FFmpeg - المسار الثابت بعد النقل
+ffmpeg_path = r"D:\video-2-text-master\ffmpeg\bin\ffmpeg.exe"
+ffmpeg_dir = r"D:\video-2-text-master\ffmpeg\bin"
+
+# Force UTF-8 encoding for stdout/stderr to handle emojis
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # For older python versions or weird environments
+        sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+        sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
+
+if os.path.exists(ffmpeg_path):
+    print(f"✅ FFmpeg موجود في: {ffmpeg_path}")
+    
+    # إضافة إلى PATH للجلسة الحالية
+    os.environ["PATH"] = ffmpeg_dir + ";" + os.environ["PATH"]
+    
+    # إعداد متغير بيئة خاص لـ Whisper
+    os.environ["WHISPER_FFMPEG_PATH"] = ffmpeg_path
+    
+    # اختبار FFmpeg
+    try:
+        result = subprocess.run([ffmpeg_path, '-version'], 
+                              capture_output=True, text=True, timeout=15)
+        if result.returncode == 0:
+            print("✅ FFmpeg يعمل بشكل صحيح")
+        else:
+            print(f"⚠️ FFmpeg موجود لكن به مشكلة: {result.stderr}")
+    except subprocess.TimeoutExpired:
+        print("⚠️ اختبار FFmpeg تجاوز الوقت المحدد لكنه قد يعمل بشكل طبيعي")
+    except Exception as e:
+        print(f"⚠️ خطأ في اختبار FFmpeg: {e}")
+else:
+    print(f"❌ FFmpeg غير موجود في: {ffmpeg_path}")
+
+ssl._create_default_https_context = ssl._create_stdlib_context
+
+class ProgressState:
+    def __init__(self):
+        self.current_stage = ""
+        self.progress = 0
+        self.total_stages = 4
+        self.stage_details = ""
+        self.is_completed = False
+        self.error = None
+
+def transcribe_audio_optimized(source: str, model, device_info: dict, progress_callback=None):
+    """✅ دالة محسنة للتحويل باستخدام النموذج المخبأ والمعلومات المسبقة"""
+    progress = ProgressState()
+    
+    try:
+        # المرحلة 1: التحضير واستخراج الصوت
+        progress.current_stage = "استخراج الصوت"
+        progress.progress = 25
+        progress.stage_details = "جاري معالجة مصدر الفيديو..."
+        if progress_callback:
+            progress_callback(progress)
+        
+        # ✅ تحديد نوع المصدر واستخراج الصوت
+        source = source.strip()  # Clean input
+        if source.startswith(('http://', 'https://')):
+            audio_path = download_youtube_audio_optimized(source, progress_callback)
+        else:
+            audio_path = extract_audio_optimized(source, progress_callback)
+        
+        if not audio_path or not os.path.exists(audio_path):
+            progress.error = "❌ Error: لم يتم إنشاء ملف الصوت"
+            if progress_callback:
+                progress_callback(progress)
+            return progress.error
+
+        # ✅ المرحلة 2: استخدام النموذج المخبأ مباشرة (0% تقدم - فوري)
+        progress.current_stage = "التحويل إلى نص"
+        progress.progress = 75
+        progress.stage_details = f"جاري التحويل على {device_info['device'].upper()} - {device_info['compute_type']}"
+        if progress_callback:
+            progress_callback(progress)
+        
+        # ✅ استخدام النموذج المخبأ للتحويل
+        result_text = perform_transcription(audio_path, model, device_info, progress_callback)
+        
+        # تنظيف الملف المؤقت
+        if os.path.exists(audio_path):
+            try:
+                os.remove(audio_path)
+                print("🧹 تم تنظيف الملف المؤقت للصوت")
+            except:
+                pass
+        
+        # المرحلة 4: الإكمال
+        progress.current_stage = "الإكمال"
+        progress.progress = 100
+        progress.stage_details = "تم الانتهاء بنجاح!"
+        progress.is_completed = True
+        if progress_callback:
+            progress_callback(progress)
+        
+        return result_text
+        
+    except Exception as e:
+        progress.error = f"❌ Error: {str(e)}"
+        progress.current_stage = "خطأ"
+        progress.stage_details = f"حدث خطأ: {str(e)}"
+        if progress_callback:
+            progress_callback(progress)
+        return progress.error
+
+def perform_transcription(audio_path: str, model, device_info: dict, progress_callback=None):
+    """✅ تنفيذ التحويل باستخدام النموذج المخبأ"""
+    print(f"🎯 بدء تحويل الصوت إلى نص باستخدام Faster-Whisper")
+    print(f"📊 وضع التشغيل: {device_info['device']} - {device_info['compute_type']}")
+    
+    try:
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(f"ملف الصوت غير موجود: {audio_path}")
+        
+        # ✅ التحويل باستخدام النموذج المخبأ
+        segments, info = model.transcribe(audio_path, beam_size=5)
+        
+        # جمع النص من جميع المقاطع
+        text_parts = []
+        for segment in segments:
+            text_parts.append(segment.text)
+        
+        text = " ".join(text_parts)
+        print("✅ تم التحويل بنجاح باستخدام Faster-Whisper!")
+        print(f"📊 معلومات التحويل: اللغة={info.language}, احتمال اللغة={info.language_probability:.2f}")
+        
+        return text
+        
+    except Exception as e:
+        print(f"❌ خطأ في التحويل باستخدام Faster-Whisper: {e}")
+        return f"Error during transcription: {str(e)}"
+
+def extract_audio_optimized(video_path: str, progress_callback=None) -> str:
+    """استخراج الصوت مع محاولات متعددة"""
+    try:
+        print(f"🎵 استخراج الصوت من: {video_path}")
+        
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"الملف غير موجود: {video_path}")
+        
+        # تحديث التقدم
+        if progress_callback:
+            progress = ProgressState()
+            progress.current_stage = "استخراج الصوت"
+            progress.stage_details = "جاري استخراج الصوت من الفيديو..."
+            progress_callback(progress)
+        
+        video_name = os.path.splitext(os.path.basename(video_path))[0]
+        temp_dir = tempfile.gettempdir()
+        audio_path = os.path.join(temp_dir, f"{video_name}_audio.wav")
+        
+        # المحاولة 1: استخدام moviepy (لا يحتاج FFmpeg في PATH)
+        try:
+            print("🔧 المحاولة 1: استخدام moviepy...")
+            video_clip = VideoFileClip(video_path)
+            audio_clip = video_clip.audio
+            audio_clip.write_audiofile(audio_path, verbose=False, logger=None)
+            audio_clip.close()
+            video_clip.close()
+            
+            if os.path.exists(audio_path):
+                print(f"✅ نجح باستخدام moviepy: {audio_path}")
+                return audio_path
+        except Exception as e:
+            print(f"⚠️ فشلت moviepy: {e}")
+        
+        # المحاولة 2: استخدام FFmpeg مباشرة إذا كان متوفراً
+        try:
+            print("🔧 المحاولة 2: استخدام FFmpeg مباشرة...")
+            ffmpeg_cmd = [
+                ffmpeg_path,
+                '-i', video_path,
+                '-vn', '-acodec', 'pcm_s16le',
+                '-ar', '16000', '-ac', '1',
+                '-y', audio_path
+            ]
+            
+            # زيادة وقت الانتظار لـ FFmpeg إلى 60 ثانية
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=60)
+            if result.returncode == 0 and os.path.exists(audio_path):
+                print(f"✅ نجح باستخدام FFmpeg مباشرة: {audio_path}")
+                return audio_path
+            else:
+                print(f"⚠️ فشل FFmpeg: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            print("⚠️ استخراج الصوت باستخدام FFmpeg تجاوز الوقت المحدد")
+        except Exception as e:
+            print(f"⚠️ فشلت محاولة FFmpeg: {e}")
+        
+        print("❌ فشلت جميع محاولات استخراج الصوت")
+        return None
+            
+    except Exception as e:
+        print(f"❌ خطأ في استخراج الصوت: {e}")
+        return None
+
+def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -> str:
+    """تحميل الصوت من يوتيوب مع إصلاح شامل"""
+    try:
+        print(f"📥 جاري تحميل فيديو يوتيوب: {youtube_url}")
+        
+        # تحديث التقدم
+        if progress_callback:
+            progress = ProgressState()
+            progress.current_stage = "استخراج الصوت"
+            progress.stage_details = "جاري تحميل فيديو اليوتيوب..."
+            progress_callback(progress)
+        
+        
+        temp_dir = tempfile.gettempdir()
+        
+        # ✅ Clean up previous temporary audio files to prevent conflicts
+        try:
+            for filename in os.listdir(temp_dir):
+                if filename.startswith('youtube_audio_'):  # Match all extensions (.part, .webm, .wav, etc)
+                    try:
+                        os.remove(os.path.join(temp_dir, filename))
+                    except:
+                        pass
+        except Exception as cleanup_info:
+            print(f"⚠️ Cleanup warning: {cleanup_info}")
+
+        # ✅ إعدادات yt-dlp محسنة ومبسطة
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(temp_dir, 'youtube_audio_%(id)s.%(ext)s'),
+            'quiet': True,
+            'no_warnings': False,
+            'ignoreerrors': True,
+            'no_check_certificate': True,
+            'extractaudio': True,
+            'audioformat': 'wav',  # ✅ استخدام wav بدلاً من mp3 لتحسين الجودة
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'wav',
+                'preferredquality': '192',
+            }],
+        }
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # الحصول على معلومات الفيديو أولاً
+                info = ydl.extract_info(youtube_url, download=False)
+                video_title = info.get('title', 'youtube_video')
+                video_id = info.get('id', 'unknown')
+                
+                print(f"🎬 جاري تحميل: {video_title}")
+                
+                # الآن قم بالتحميل
+                ydl.download([youtube_url])
+                
+                # ✅ البحث عن الملف المحمل
+                expected_filename = f"youtube_audio_{video_id}.wav"
+                expected_path = os.path.join(temp_dir, expected_filename)
+                
+
+                if os.path.exists(expected_path):
+                    print(f"✅ تم تحميل الملف بنجاح: {expected_path}")
+                    return expected_path
+                
+                print(f"⚠️ لم يتم العثور على الملف المتوقع: {expected_filename}")
+                # Fallback removed to prevent returning wrong video audio
+                
+                # If we get here, yt-dlp failed to produce the file we wanted.
+                # proceed to pytube fallback.
+                
+        except Exception as e:
+            print(f"❌ فشل yt-dlp: {e}")
+            
+            # ✅ البديل: استخدام pytube
+            try:
+                print("🔄 جرب pytube كبديل...")
+                from pytube import YouTube
+                
+                yt = YouTube(youtube_url)
+                audio_stream = yt.streams.filter(only_audio=True, file_extension='mp4').first()
+                
+                if audio_stream:
+                    # تحميل الفيديو الصوتي
+                    video_path = audio_stream.download(output_path=temp_dir, filename=f"youtube_temp_{yt.video_id}.mp4")
+                    print(f"📥 تم التحميل باستخدام pytube: {video_path}")
+                    
+                    # استخراج الصوت من الفيديو
+                    if progress_callback:
+                        progress.stage_details = "جاري استخراج الصوت من الفيديو المحمل..."
+                        progress_callback(progress)
+                    
+                    audio_path = extract_audio_optimized(video_path, progress_callback)
+                    
+                    # تنظيف ملف الفيديو المؤقت
+                    if os.path.exists(video_path):
+                        try:
+                            os.remove(video_path)
+                            print("🧹 تم تنظيف ملف الفيديو المؤقت")
+                        except:
+                            pass
+                    
+                    if audio_path and os.path.exists(audio_path):
+                        print(f"✅ نجح باستخدام pytube + استخراج الصوت: {audio_path}")
+                        return audio_path
+                    else:
+                        raise Exception("فشل استخراج الصوت من الفيديو المحمل")
+                else:
+                    raise Exception("لم يتم العثور على تيار صوتي")
+                    
+            except Exception as pytube_error:
+                print(f"❌ فشل pytube: {pytube_error}")
+                raise Exception(f"فشل جميع محاولات تحميل يوتيوب: {pytube_error}")
+        
+    except Exception as e:
+        print(f"❌ خطأ نهائي في تحميل يوتيوب: {e}")
+        return None
+
+# دوال مساعدة للترجمة (للتوافق مع الإصدارات السابقة)
+def split_long_text(text, max_length=4000):
+    if len(text) <= max_length:
+        return [text]
+    
+    sentences = text.split('. ')
+    parts = []
+    current_part = ""
+    
+    for sentence in sentences:
+        if len(current_part + sentence) <= max_length:
+            current_part += sentence + ". "
+        else:
+            if current_part:
+                parts.append(current_part.strip())
+            current_part = sentence + ". "
+    
+    if current_part:
+        parts.append(current_part.strip())
+    
+    return parts
