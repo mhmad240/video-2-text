@@ -212,6 +212,9 @@ def main():
             if translate_requested:
                 st.session_state.translating = True
                 try:
+                    import gc
+                    gc.collect()  # 🧹 تنظيف الذاكرة قبل الترجمة تفادياً لامتلاء الرام
+                    
                     with st.spinner("جاري الترجمة... قد تستغرق بضع ثوانٍ"):
                         st.session_state.translated_text = translate_to_arabic(
                             st.session_state.original_text, 
