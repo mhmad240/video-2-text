@@ -274,6 +274,11 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
             # استخدام ملف الكوكيز إن وجد
             'cookiefile': cookie_file_path if cookie_file_path else None,
             
+            # 🔧 إعدادات الشبكة لتفادي أخطاء الاتصال (Stream ID Error)
+            'concurrent_fragment_downloads': 1,  # منع التحميل المتوازي
+            'retries': 10,
+            'fragment_retries': 10,
+            
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
@@ -284,15 +289,13 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
         # 🛡️ استراتيجية العميل (Client Strategy)
         if cookie_file_path:
             # ✅ إذا وجد كوكيز (من متصفح)، نستخدم عميل الويب العادي لتطابق الجلسة
-            # هذا يحل مشكلة 429 و Format Not Available عند خلط كوكيز المتصفح مع عميل أندرويد
             print("🍪 استخدام وضع المتصفح الموثق (Auth Mode)")
-            # لا نضيف extractor_args مخصصة، نترك yt-dlp يتصرف كمتصفح
         else:
             # ❌ بدون كوكيز، نحاول التمويه كـ TV أو Android
             print("🕵️ استخدام وضع التمويه (Anonymous Mode)")
             ydl_opts['extractor_args'] = {
                 'youtube': {
-                    'player_client': ['tv', 'android', 'web'], # محاولة TV أولاً ثم أندرويد
+                    'player_client': ['tv', 'android', 'web'],
                 }
             }
         
@@ -312,10 +315,17 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 expected_filename = f"youtube_audio_{video_id}.wav"
                 expected_path = os.path.join(temp_dir, expected_filename)
                 
-
                 if os.path.exists(expected_path):
-                    print(f"✅ تم تحميل الملف بنجاح: {expected_path}")
-                    return expected_path
+                    # التحقق من حجم الملف
+                    if os.path.getsize(expected_path) > 0:
+                        print(f"✅ تم تحميل الملف بنجاح: {expected_path}")
+                        return expected_path
+                    else:
+                        print(f"⚠️ الملف موجود لكنه فارغ: {expected_path}")
+                        try:
+                            os.remove(expected_path)
+                        except:
+                            pass
                 
                 print(f"⚠️ لم يتم العثور على الملف المتوقع: {expected_filename}")
                 # Fallback removed to prevent returning wrong video audio
