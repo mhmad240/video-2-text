@@ -239,16 +239,30 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -
         except Exception as cleanup_info:
             print(f"⚠️ Cleanup warning: {cleanup_info}")
 
-        # ✅ إعدادات yt-dlp محسنة ومبسطة
+        # ✅ إعدادات yt-dlp محسنة (تم التحديث لتخطي حظر 403)
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(temp_dir, 'youtube_audio_%(id)s.%(ext)s'),
             'quiet': True,
-            'no_warnings': False,
+            'no_warnings': True,
             'ignoreerrors': True,
             'no_check_certificate': True,
             'extractaudio': True,
-            'audioformat': 'wav',  # ✅ استخدام wav بدلاً من mp3 لتحسين الجودة
+            'audioformat': 'wav',
+            
+            # 🛡️ إعدادات الحماية وتخطي الحظر
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['dash', 'hls']
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+            },
+
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
