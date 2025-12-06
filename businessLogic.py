@@ -9,43 +9,52 @@ from moviepy.editor import VideoFileClip
 import yt_dlp
 import numpy as np
 
-# 🔧 الإعداد الصحيح لـ FFmpeg - المسار الثابت بعد النقل
-ffmpeg_path = r"D:\video-2-text-master\ffmpeg\bin\ffmpeg.exe"
-ffmpeg_dir = r"D:\video-2-text-master\ffmpeg\bin"
+# 🔧 الإعداد الذكي لـ FFmpeg (متوافق مع Windows و Linux/Cloud)
+import shutil
 
-# Force UTF-8 encoding for stdout/stderr to handle emojis
+def get_ffmpeg_path():
+    # 1. البحث في مسار النظام (System PATH)
+    if shutil.which("ffmpeg"):
+        return "ffmpeg", ""
+        
+    # 2. البحث في المجلد المحلي (Windows Portable Version)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    local_ffmpeg = os.path.join(base_dir, "ffmpeg", "bin", "ffmpeg.exe")
+    
+    if os.path.exists(local_ffmpeg):
+        return local_ffmpeg, os.path.dirname(local_ffmpeg)
+        
+    return None, None
+
+ffmpeg_path, ffmpeg_dir = get_ffmpeg_path()
+
+# Force UTF-8 encoding for stdout/stderr
 if sys.stdout.encoding != 'utf-8':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
     except AttributeError:
-        # For older python versions or weird environments
         sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
         sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
 
-if os.path.exists(ffmpeg_path):
-    print(f"✅ FFmpeg موجود في: {ffmpeg_path}")
+if ffmpeg_path:
+    print(f"✅ FFmpeg تم اكتشافه: {ffmpeg_path}")
     
-    # إضافة إلى PATH للجلسة الحالية
-    os.environ["PATH"] = ffmpeg_dir + ";" + os.environ["PATH"]
+    # تحديث متغيرات البيئة إذا كان مساراً محلياً
+    if ffmpeg_dir:
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ["PATH"]
+        os.environ["WHISPER_FFMPEG_PATH"] = ffmpeg_path
     
-    # إعداد متغير بيئة خاص لـ Whisper
-    os.environ["WHISPER_FFMPEG_PATH"] = ffmpeg_path
-    
-    # اختبار FFmpeg
+    # اختبار بسيط
     try:
-        result = subprocess.run([ffmpeg_path, '-version'], 
-                              capture_output=True, text=True, timeout=15)
-        if result.returncode == 0:
-            print("✅ FFmpeg يعمل بشكل صحيح")
-        else:
-            print(f"⚠️ FFmpeg موجود لكن به مشكلة: {result.stderr}")
-    except subprocess.TimeoutExpired:
-        print("⚠️ اختبار FFmpeg تجاوز الوقت المحدد لكنه قد يعمل بشكل طبيعي")
+        subprocess.run([ffmpeg_path, '-version'], capture_output=True, timeout=5)
     except Exception as e:
-        print(f"⚠️ خطأ في اختبار FFmpeg: {e}")
+        print(f"⚠️ تحذير: فشل اختبار FFmpeg: {e}")
+
 else:
-    print(f"❌ FFmpeg غير موجود في: {ffmpeg_path}")
+    print("⚠️ تحذير: لم يتم العثور على FFmpeg في النظام أو المجلد المحلي!")
+    # لن نوقف البرنامج هنا، فقد يعمل moviepy بدونه في بعض الحالات
+
 
 ssl._create_default_https_context = ssl._create_stdlib_context
 
