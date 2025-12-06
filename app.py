@@ -4,13 +4,9 @@ import os
 import time
 import sys
 
-# Force UTF-8 encoding for stdout/stderr
-if sys.stdout.encoding != 'utf-8':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except AttributeError:
-        pass
+# Force UTF-8 encoding check removed for Streamlit Cloud compatibility
+# Streamlit handles encoding internally
+
 
 # إضافة مسار مجلد modules يدوياً
 current_dir = os.path.dirname(os.path.abspath(__file__))

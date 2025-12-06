@@ -28,14 +28,8 @@ def get_ffmpeg_path():
 
 ffmpeg_path, ffmpeg_dir = get_ffmpeg_path()
 
-# Force UTF-8 encoding for stdout/stderr
-if sys.stdout.encoding != 'utf-8':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except AttributeError:
-        sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
-        sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
+# Force UTF-8 encoding check removed for Streamlit Cloud compatibility
+
 
 if ffmpeg_path:
     print(f"✅ FFmpeg تم اكتشافه: {ffmpeg_path}")
