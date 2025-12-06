@@ -239,7 +239,7 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -
         except Exception as cleanup_info:
             print(f"⚠️ Cleanup warning: {cleanup_info}")
 
-        # ✅ إعدادات yt-dlp محسنة (تم التحديث لتخطي حظر 403)
+        # ✅ إعدادات yt-dlp - المحاولة باستخدام عميل iOS (غالباً ينجح في السيرفرات)
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(temp_dir, 'youtube_audio_%(id)s.%(ext)s'),
@@ -250,17 +250,12 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -
             'extractaudio': True,
             'audioformat': 'wav',
             
-            # 🛡️ إعدادات الحماية وتخطي الحظر
+            # 🛡️ إعدادات الحماية وتخطي الحظر (iOS Client)
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web'],
-                    'skip': ['dash', 'hls']
+                    'player_client': ['ios', 'web'],
+                    'player_skip': ['webpage', 'configs', 'js'],
                 }
-            },
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
             },
 
             'postprocessors': [{
