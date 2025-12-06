@@ -239,7 +239,7 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -
         except Exception as cleanup_info:
             print(f"⚠️ Cleanup warning: {cleanup_info}")
 
-        # ✅ إعدادات yt-dlp - محاولة ثالثة (Android بدون headers)
+        # ✅ إعدادات yt-dlp - محاولة رابعة (TV Client - الحل السحري للسيرفرات)
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(temp_dir, 'youtube_audio_%(id)s.%(ext)s'),
@@ -250,11 +250,10 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -
             'extractaudio': True,
             'audioformat': 'wav',
             
-            # 🛡️ إعدادات الحماية: العودة للأندرويد لكن بدون ترويسات مزيفة
+            # 🛡️ المحاكاة كشاشة تلفزيون ذكية
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web'],
-                    'skip': ['dash', 'hls']
+                    'player_client': ['tv', 'web'],
                 }
             },
 
