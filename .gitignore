@@ -50,3 +50,6 @@ ffmpeg/
 # OS
 Thumbs.db
 Desktop.ini
+
+# Security
+cookies.txt

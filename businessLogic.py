@@ -245,7 +245,7 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 cookie_fd, cookie_file_path = tempfile.mkstemp(suffix='.txt', text=True)
                 with os.fdopen(cookie_fd, 'w') as f:
                     f.write(cookies_content)
-                print(f"🍪 تم إنشاء ملف كوكيز مؤقت: {cookie_file_path}")
+                print(f"🍪 تم استخدام الكوكيز من المدخلات: {cookie_file_path}")
             except Exception as e:
                 print(f"⚠️ فشل إنشاء ملف الكوكيز: {e}")
         
