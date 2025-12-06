@@ -303,84 +303,94 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 }
             }
         
+        # 🏁 محاولة أولى: التحميل باستخدام الإعدادات الحالية (كوكيز أو تمويه)
+        success = False
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # الحصول على معلومات الفيديو أولاً
                 info = ydl.extract_info(youtube_url, download=False)
                 video_title = info.get('title', 'youtube_video')
                 video_id = info.get('id', 'unknown')
-                
                 print(f"🎬 جاري تحميل: {video_title}")
-                
-                # الآن قم بالتحميل
                 ydl.download([youtube_url])
                 
-                # ✅ البحث عن الملف المحمل
+                # التحقق من الملف
                 expected_filename = f"youtube_audio_{video_id}.wav"
                 expected_path = os.path.join(temp_dir, expected_filename)
                 
-                if os.path.exists(expected_path):
-                    # التحقق من حجم الملف
-                    if os.path.getsize(expected_path) > 0:
-                        print(f"✅ تم تحميل الملف بنجاح: {expected_path}")
-                        return expected_path
-                    else:
-                        print(f"⚠️ الملف موجود لكنه فارغ: {expected_path}")
-                        try:
-                            os.remove(expected_path)
-                        except:
-                            pass
-                
-                
-                print(f"⚠️ لم يتم العثور على الملف المتوقع: {expected_filename}")
-                raise Exception("فشل yt-dlp في تحميل الملف (قد يكون محظوراً أو غير موجود)")
+                if os.path.exists(expected_path) and os.path.getsize(expected_path) > 0:
+                    print(f"✅ تم تحميل الملف بنجاح: {expected_path}")
+                    return expected_path
+                else:
+                    raise Exception("ملف الصوت غير موجود أو فارغ")
 
-                
         except Exception as e:
-            print(f"❌ فشل yt-dlp: {e}")
+            print(f"⚠️ فشلت المحاولة الأولى (yt-dlp): {e}")
             
-            # ✅ البديل: استخدام pytube
+            # 🔄 محاولة ثانية: إذا كنا نستخدم كوكيز وفشلت، نجرب الوضع المجهول (Anonymous) فوراً
+            if cookie_file_path:
+                print("🔄 الكوكيز ربما تكون معطلة. جاري المحاولة بوضع التمويه (Anonymous Mode)...")
+                try:
+                    # إعدادات جديدة بدون كوكيز ومع تمويه
+                    ydl_opts_anon = ydl_opts.copy()
+                    ydl_opts_anon['cookiefile'] = None
+                    ydl_opts_anon['extractor_args'] = {
+                        'youtube': {
+                            'player_client': ['tv', 'android', 'ios'], # تجربة عملاء مختلفين
+                        }
+                    }
+                    
+                    with yt_dlp.YoutubeDL(ydl_opts_anon) as ydl:
+                        ydl.download([youtube_url])
+                        # (نفس منطق التحقق من الملف - يمكن تحسين الكود لعدم التكرار لكن للسرعة نكرره)
+                        # نحتاج معرف الفيديو مرة أخرى أو نفترض أنه نفسه
+                        # للأمان نعيد البحث عن الملفات الحديثة
+                        import glob
+                        wav_files = sorted(glob.glob(os.path.join(temp_dir, 'youtube_audio_*.wav')), key=os.path.getmtime, reverse=True)
+                        if wav_files and os.path.getsize(wav_files[0]) > 0:
+                            print(f"✅ نجح التحميل بالوضع المجهول: {wav_files[0]}")
+                            return wav_files[0]
+                        else:
+                             raise Exception("فشل الوضع المجهول أيضاً")
+
+                except Exception as anon_error:
+                    print(f"❌ فشل الوضع المجهول: {anon_error}")
+
+            # 🔄 محاولة ثالثة وأخيرة: استخدام pytube
             try:
-                print("🔄 جرب pytube كبديل...")
+                print("🔄 فشل yt-dlp تماماً. جاري تجربة pytube كبديل أخير...")
                 from pytube import YouTube
                 
                 yt = YouTube(youtube_url)
-                audio_stream = yt.streams.filter(only_audio=True, file_extension='mp4').first()
+                # استخدام الجودة المنخفضة لضمان التحميل
+                audio_stream = yt.streams.filter(only_audio=True).first()
                 
                 if audio_stream:
-                    # تحميل الفيديو الصوتي
                     video_path = audio_stream.download(output_path=temp_dir, filename=f"youtube_temp_{yt.video_id}.mp4")
                     print(f"📥 تم التحميل باستخدام pytube: {video_path}")
                     
-                    # استخراج الصوت من الفيديو
                     if progress_callback:
-                        progress.stage_details = "جاري استخراج الصوت من الفيديو المحمل..."
+                        progress.stage_details = "جاري استخراج الصوت..."
                         progress_callback(progress)
                     
                     audio_path = extract_audio_optimized(video_path, progress_callback)
                     
-                    # تنظيف ملف الفيديو المؤقت
-                    if os.path.exists(video_path):
-                        try:
-                            os.remove(video_path)
-                            print("🧹 تم تنظيف ملف الفيديو المؤقت")
-                        except:
-                            pass
+                    # تنظيف
+                    try:
+                        os.remove(video_path)
+                    except:
+                        pass
                     
                     if audio_path and os.path.exists(audio_path):
-                        print(f"✅ نجح باستخدام pytube + استخراج الصوت: {audio_path}")
                         return audio_path
                     else:
-                        raise Exception("فشل استخراج الصوت من الفيديو المحمل")
+                        raise Exception("فشل استخراج الصوت")
                 else:
-                    raise Exception("لم يتم العثور على تيار صوتي")
+                    raise Exception("لا يوجد تيار صوتي")
                     
             except Exception as pytube_error:
-                print(f"❌ فشل pytube: {pytube_error}")
-                raise Exception(f"فشل جميع محاولات تحميل يوتيوب: {pytube_error}")
+                print(f"❌ فشل pytube أيضاً: {pytube_error}")
+                raise Exception(f"عذراً، فشلت جميع محاولات التحميل (الكوكيز، التمويه، والبدائل). يرجى التأكد من صلاحية الكوكيز أو الرابط.")
         
-    except Exception as e:
-        print(f"❌ خطأ نهائي في تحميل يوتيوب: {e}")
         return None
 
 # دوال مساعدة للترجمة (للتوافق مع الإصدارات السابقة)
