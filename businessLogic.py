@@ -274,20 +274,27 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
             # استخدام ملف الكوكيز إن وجد
             'cookiefile': cookie_file_path if cookie_file_path else None,
             
-            # العودة للإعدادات الطبيعية لأن الكوكيز ستحل المشكلة
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web'],
-                    'skip': ['dash', 'hls']
-                }
-            },
-
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
                 'preferredquality': '192',
             }],
         }
+
+        # 🛡️ استراتيجية العميل (Client Strategy)
+        if cookie_file_path:
+            # ✅ إذا وجد كوكيز (من متصفح)، نستخدم عميل الويب العادي لتطابق الجلسة
+            # هذا يحل مشكلة 429 و Format Not Available عند خلط كوكيز المتصفح مع عميل أندرويد
+            print("🍪 استخدام وضع المتصفح الموثق (Auth Mode)")
+            # لا نضيف extractor_args مخصصة، نترك yt-dlp يتصرف كمتصفح
+        else:
+            # ❌ بدون كوكيز، نحاول التمويه كـ TV أو Android
+            print("🕵️ استخدام وضع التمويه (Anonymous Mode)")
+            ydl_opts['extractor_args'] = {
+                'youtube': {
+                    'player_client': ['tv', 'android', 'web'], # محاولة TV أولاً ثم أندرويد
+                }
+            }
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
