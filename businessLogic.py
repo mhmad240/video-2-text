@@ -327,11 +327,10 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                         except:
                             pass
                 
-                print(f"⚠️ لم يتم العثور على الملف المتوقع: {expected_filename}")
-                # Fallback removed to prevent returning wrong video audio
                 
-                # If we get here, yt-dlp failed to produce the file we wanted.
-                # proceed to pytube fallback.
+                print(f"⚠️ لم يتم العثور على الملف المتوقع: {expected_filename}")
+                raise Exception("فشل yt-dlp في تحميل الملف (قد يكون محظوراً أو غير موجود)")
+
                 
         except Exception as e:
             print(f"❌ فشل yt-dlp: {e}")
