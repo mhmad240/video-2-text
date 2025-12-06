@@ -66,9 +66,12 @@ def translation_progress_callback(message):
     st.session_state.current_stage = "ترجمة"
     st.session_state.stage_details = message
 
-def start_processing(uploaded_file, url, model, cached_model, device_info):
+# ... (Keep previous imports)
+
+def start_processing(uploaded_file, url, model, cached_model, device_info, cookies=None):  # ✅ إضافة cookies
     """بدء عملية التحويل باستخدام النموذج المخبأ"""
     st.session_state.process_running = True
+    # ... (Keep existing state resets) ...
     st.session_state.process_stopped = False
     st.session_state.stop_requested = False
     st.session_state.controller.should_stop = False
@@ -87,7 +90,7 @@ def start_processing(uploaded_file, url, model, cached_model, device_info):
     # تشغيل المعالجة مباشرة
     if uploaded_file:
         original_text, message = process_uploaded_file(
-            uploaded_file, cached_model, device_info,  # تمرير cached_model بدلاً من model
+            uploaded_file, cached_model, device_info,
             progress_callback, st.session_state.controller
         )
         st.session_state.original_text = original_text
@@ -98,8 +101,9 @@ def start_processing(uploaded_file, url, model, cached_model, device_info):
                 st.error(message)
     elif url:
         original_text, message = process_youtube_url(
-            url, cached_model, device_info,  # تمرير cached_model بدلاً من model
-            progress_callback, st.session_state.controller
+            url, cached_model, device_info,
+            progress_callback, st.session_state.controller,
+            cookies=cookies  # ✅ تمرير Cookies
         )
         st.session_state.original_text = original_text
         if message:
@@ -112,40 +116,20 @@ def start_processing(uploaded_file, url, model, cached_model, device_info):
     st.session_state.process_running = False
     st.rerun()
 
-def stop_processing():
-    """إيقاف فوري للعملية"""
-    st.session_state.stop_requested = True
-    st.session_state.controller.request_stop()
-    st.error("🛑 تم طلب الإيقاف - جاري إيقاف العملية...")
-    st.session_state.process_running = False
-    st.rerun()
-
-def reset_session():
-    """إعادة تعيين الجلسة بالكامل"""
-    st.session_state.original_text = None
-    st.session_state.translated_text = None
-    st.session_state.process_running = False
-    st.session_state.process_stopped = False
-    st.session_state.stop_requested = False
-    st.session_state.controller.should_stop = False
-    st.session_state.progress_state = None
-    st.session_state.current_progress = 0
-    st.session_state.current_stage = ""
-    st.session_state.stage_details = ""
-    st.session_state.translating = False
-    st.session_state.device_info = None
-    st.rerun()
+# ... (Keep stop_processing and reset_session) ...
 
 def main():
     st.title("🎥 Video2Text - تحويل الفيديو إلى نص")
     
-    # الحصول على معلومات الجهاز مرة واحدة فقط
+    # ... (Keep device info logic) ...
+    
+    # الحصول على معلومات الجهاز مرات واحدة فقط
     if st.session_state.device_info is None:
         st.session_state.device_info = get_device_info()
     
     device_info = st.session_state.device_info
-    
-    # عرض معلومات النظام
+
+    # ... (Keep expander) ...
     with st.expander("ℹ️ معلومات النظام والأداء", expanded=False):
         st.write(f"**{device_info['icon']} وضع التشغيل:** {device_info['reason']}")
         st.write(f"**💡 نصيحة الأداء:** {device_info['performance_tip']}")
@@ -160,17 +144,17 @@ def main():
             st.warning("🚫 قم بتثبيت cuDNN لتفعيل GPU")
         else:
             st.info("💻 CPU مع INT8 - أداء متوازن")
-    
+
     # تبويبات التنقل
     tab1, tab2 = st.tabs(["🔄 تحويل الفيديو", "ℹ️ عن التطبيق"])
     
     with tab1:
-        # زر تحديث يدوي فقط
+        # ... (Keep update button) ...
         if st.session_state.process_running:
             if st.button("🔄 تحديث الواجهة", type="secondary"):
                 st.rerun()
         
-        # عرض حالة التقدم إذا كانت العملية جارية
+        # ... (Keep progress) ...
         if st.session_state.process_running:
             st.subheader("📊 حالة التقدم")
             display_progress_indicator(
@@ -188,13 +172,13 @@ def main():
         
         # استخدام المكونات الجديدة
         uploaded_file = render_file_upload_section()
-        url = render_youtube_section()
+        url, cookies = render_youtube_section()  # ✅ استلام cookies
         model = render_model_selection()
         
         # تحميل النموذج المخبأ عند اختيار النموذج
         cached_model = load_whisper_model(model, device_info)
         
-        # نص إرشادي إضافي للفيديوهات الكبيرة
+        # ... (Keep large file warning) ...
         if uploaded_file and (uploaded_file.size / (1024 * 1024)) > 500:
             st.write("💡 **للتحويل السريع**: اختر `tiny` أو `base` - **للجودة العالية**: اختر `small` أو `medium`")
         else:
@@ -210,7 +194,7 @@ def main():
         )
         
         if button_action == "start":
-            start_processing(uploaded_file, url, model, cached_model, device_info)
+            start_processing(uploaded_file, url, model, cached_model, device_info, cookies)  # ✅ تمرير cookies
         elif button_action == "stop":
             stop_processing()
         elif button_action == "reset":

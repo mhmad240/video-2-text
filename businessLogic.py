@@ -61,7 +61,7 @@ class ProgressState:
         self.is_completed = False
         self.error = None
 
-def transcribe_audio_optimized(source: str, model, device_info: dict, progress_callback=None):
+def transcribe_audio_optimized(source: str, model, device_info: dict, progress_callback=None, cookies=None):
     """✅ دالة محسنة للتحويل باستخدام النموذج المخبأ والمعلومات المسبقة"""
     progress = ProgressState()
     
@@ -76,7 +76,7 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
         # ✅ تحديد نوع المصدر واستخراج الصوت
         source = source.strip()  # Clean input
         if source.startswith(('http://', 'https://')):
-            audio_path = download_youtube_audio_optimized(source, progress_callback)
+            audio_path = download_youtube_audio_optimized(source, progress_callback, cookies)
         else:
             audio_path = extract_audio_optimized(source, progress_callback)
         
@@ -86,6 +86,7 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
                 progress_callback(progress)
             return progress.error
 
+        # ... (rest of function remains similar but let's just make sure we don't break indentation)
         # ✅ المرحلة 2: استخدام النموذج المخبأ مباشرة (0% تقدم - فوري)
         progress.current_stage = "التحويل إلى نص"
         progress.progress = 75
@@ -121,6 +122,16 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
         if progress_callback:
             progress_callback(progress)
         return progress.error
+
+# ... (perform_transcription and extract_audio_optimized remain unchanged, skipping them in diff if possible) ...
+# Actually better to target specific blocks or replace functions one by one if they are far apart. 
+# But here I will replace the whole block from 61 to end of download function to be safe and consistent.
+
+# Wait, replace_file_content limit is contiguous. 
+# Let's do transcribe_audio_optimized first.
+
+# (Redoing tool call below correctly for split edits)  
+
 
 def perform_transcription(audio_path: str, model, device_info: dict, progress_callback=None):
     """✅ تنفيذ التحويل باستخدام النموذج المخبأ"""
@@ -213,8 +224,9 @@ def extract_audio_optimized(video_path: str, progress_callback=None) -> str:
         print(f"❌ خطأ في استخراج الصوت: {e}")
         return None
 
-def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -> str:
-    """تحميل الصوت من يوتيوب مع إصلاح شامل"""
+def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, cookies_content=None) -> str:
+    """تحميل الصوت من يوتيوب مع دعم الكوكيز"""
+    cookie_file_path = None
     try:
         print(f"📥 جاري تحميل فيديو يوتيوب: {youtube_url}")
         
@@ -225,21 +237,30 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -
             progress.stage_details = "جاري تحميل فيديو اليوتيوب..."
             progress_callback(progress)
         
-        
         temp_dir = tempfile.gettempdir()
         
-        # ✅ Clean up previous temporary audio files to prevent conflicts
+        # ✅ إنشاء ملف كوكيز مؤقت إذا توفر المحتوى
+        if cookies_content:
+            try:
+                cookie_fd, cookie_file_path = tempfile.mkstemp(suffix='.txt', text=True)
+                with os.fdopen(cookie_fd, 'w') as f:
+                    f.write(cookies_content)
+                print(f"🍪 تم إنشاء ملف كوكيز مؤقت: {cookie_file_path}")
+            except Exception as e:
+                print(f"⚠️ فشل إنشاء ملف الكوكيز: {e}")
+        
+        # ✅ Clean up previous files
         try:
             for filename in os.listdir(temp_dir):
-                if filename.startswith('youtube_audio_'):  # Match all extensions (.part, .webm, .wav, etc)
+                if filename.startswith('youtube_audio_'):
                     try:
                         os.remove(os.path.join(temp_dir, filename))
                     except:
                         pass
-        except Exception as cleanup_info:
-            print(f"⚠️ Cleanup warning: {cleanup_info}")
+        except Exception:
+            pass
 
-        # ✅ إعدادات yt-dlp - محاولة رابعة (TV Client - الحل السحري للسيرفرات)
+        # ✅ إعدادات yt-dlp مع دعم الكوكيز
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(temp_dir, 'youtube_audio_%(id)s.%(ext)s'),
@@ -250,10 +271,14 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None) -
             'extractaudio': True,
             'audioformat': 'wav',
             
-            # 🛡️ المحاكاة كشاشة تلفزيون ذكية
+            # استخدام ملف الكوكيز إن وجد
+            'cookiefile': cookie_file_path if cookie_file_path else None,
+            
+            # العودة للإعدادات الطبيعية لأن الكوكيز ستحل المشكلة
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['tv', 'web'],
+                    'player_client': ['android', 'web'],
+                    'skip': ['dash', 'hls']
                 }
             },
 

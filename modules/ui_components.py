@@ -148,7 +148,18 @@ def render_youtube_section():
     """عرض قسم رابط يوتيوب"""
     st.subheader("🔗 رابط يوتيوب")
     url = st.text_input("أدخل رابط يوتيوب:", label_visibility="collapsed")
-    return url
+    
+    cookies = None
+    with st.expander("🍪 إعدادات متقدمة (لمشاكل التحميل)"):
+        st.write("إذا فشل التحميل بسبب الحظر (403/Sign in)، قم بإضافة ملفات تعريف الارتباط (Cookies) هنا.")
+        cookies = st.text_area(
+            "الصق محتوى Netscape Cookies هنا:", 
+            placeholder="# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/...",
+            height=150
+        )
+        st.info("💡 يمكنك استخدام إضافة 'Get cookies.txt LOCALLY' للمتصفح للحصول عليها.")
+        
+    return url, cookies
 
 def render_model_selection():
     """عرض اختيار النموذج"""

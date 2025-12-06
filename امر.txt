@@ -1,0 +1,11 @@
+غيّر سياسة التنفيذ (Execution Policy): انسخ هذا الأمر والصقه في الترمينال (Terminal) واضغط Enter. سيسمح هذا الأمر بتشغيل السكربتات التي قمت بإنشائها محلياً:
+powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+(إذا سألك النظام هل أنت متأكد، اكتب الحرف Y أو A ثم اضغط Enter للموافقة).
+فعّل البيئة الافتراضية مرة أخرى: بعد تنفيذ الأمر السابق بنجاح، حاول تفعيل البيئة مرة أخرى باستخدام الأمر الأصلي:
+powershell
+.\video2text_env\Scripts\activate
+
+تشغيل التطبيق
+streamlit run app.py

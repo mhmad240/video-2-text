@@ -49,7 +49,7 @@ def process_uploaded_file(uploaded_file, model, device_info, progress_callback, 
             except:
                 pass
 
-def process_youtube_url(url, model, device_info, progress_callback, controller):
+def process_youtube_url(url, model, device_info, progress_callback, controller, cookies=None):
     """معالجة رابط يوتيوب باستخدام النموذج المخبأ"""
     try:
         if controller.check_stop():
@@ -59,7 +59,8 @@ def process_youtube_url(url, model, device_info, progress_callback, controller):
             url, 
             model,
             device_info,
-            progress_callback
+            progress_callback,
+            cookies=cookies  # ✅ تمرير الكوكيز
         )
         
         if not controller.check_stop():
