@@ -1,7 +1,7 @@
 streamlit==1.28.0
 faster-whisper==1.0.3
 ctranslate2==4.5.0
-translators==6.0.1
+deep-translator==1.11.4
 yt-dlp>=2024.3.10
 moviepy==1.0.3
 pytube==15.0.0

@@ -75,7 +75,7 @@ def process_youtube_url(url, model, device_info, progress_callback, controller, 
         return f"❌ Exception: {str(e)}", f"❌ حدث خطأ: {str(e)}"
 
 def translate_to_arabic(text, controller, progress_callback=None):
-    """ترجمة النص إلى العربية باستخدام translators مع معالجة أخطاء محسنة"""
+    """ترجمة النص إلى العربية باستخدام deep-translator (أكثر استقراراً)"""
     try:
         if controller.check_stop():
             return "⏹️ تم إيقاف الترجمة"
@@ -84,31 +84,37 @@ def translate_to_arabic(text, controller, progress_callback=None):
             return "⚠️ لا يوجد نص للترجمة"
         
         try:
-            import translators as ts
+            from deep_translator import GoogleTranslator
         except ImportError:
-            return "❌ مكتبة الترجمة غير مثبتة. الرجاء تثبيت: pip install translators"
+            return "❌ مكتبة deep-translator غير مثبتة."
         
+        # Check connectivity
         try:
             import requests
             requests.get("https://translate.google.com", timeout=5)
         except:
             return "❌ لا يوجد اتصال بالإنترنت للترجمة"
         
-        max_chunk_size = 3000
+        translator = GoogleTranslator(source='auto', target='ar')
+        max_chunk_size = 4000  # Deep translator handles larger chunks better
+        
         if len(text) > max_chunk_size:
             if progress_callback:
                 progress_callback("🔄 تقسيم النص للترجمة...")
             
+            # Simple chunking by newline or period
             chunks = []
             current_chunk = ""
             
-            for sentence in text.split('.'):
-                if len(current_chunk) + len(sentence) + 1 <= max_chunk_size:
-                    current_chunk += sentence + '.'
+            # Better splitting logic
+            paragraphs = text.replace('\n', ' \n ').split(' ')
+            
+            for word in paragraphs:
+                if len(current_chunk) + len(word) + 1 <= max_chunk_size:
+                    current_chunk += word + " "
                 else:
-                    if current_chunk:
-                        chunks.append(current_chunk)
-                    current_chunk = sentence + '.'
+                    chunks.append(current_chunk)
+                    current_chunk = word + " "
             
             if current_chunk:
                 chunks.append(current_chunk)
@@ -124,16 +130,15 @@ def translate_to_arabic(text, controller, progress_callback=None):
                     progress_callback(f"🔄 جاري الترجمة {i+1}/{total_chunks}...")
                 
                 try:
-                    translated = ts.translate_text(
-                        chunk, 
-                        translator='google', 
-                        to_language='ar',
-                        timeout=10
-                    )
+                    translated = translator.translate(chunk)
                     translated_parts.append(translated)
+                    # Small delay to avoid rate limiting
+                    import time
+                    time.sleep(0.5)
                     
                 except Exception as chunk_error:
-                    translated_parts.append(f"[ترجمة غير متوفرة: {chunk}]")
+                    print(f"Translation error on chunk {i}: {chunk_error}")
+                    translated_parts.append(f"[خطأ في الترجمة جزء {i+1}]")
                     continue
             
             result = ' '.join(translated_parts)
@@ -145,19 +150,15 @@ def translate_to_arabic(text, controller, progress_callback=None):
             if progress_callback:
                 progress_callback("🔄 جاري الترجمة...")
             
-            translated = ts.translate_text(
-                text, 
-                translator='google', 
-                to_language='ar',
-                timeout=10
-            )
+            translated = translator.translate(text)
             
             if progress_callback:
                 progress_callback("✅ اكتملت الترجمة!")
             return translated
             
     except Exception as e:
-        error_msg = f"❌ خطأ في الترجمة: {str(e)}"
+        error_msg = f"❌ خطأ غير متوقع في الترجمة: {str(e)}"
+        print(error_msg)
         if progress_callback:
             progress_callback(error_msg)
-        return f"⚠️ النص الأصلي ({error_msg}): {text[:100]}..."
+        return f"⚠️ حدث خطأ أثناء الترجمة: {str(e)}"
