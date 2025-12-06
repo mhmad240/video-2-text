@@ -262,7 +262,8 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
 
         # ✅ إعدادات yt-dlp مع دعم الكوكيز
         ydl_opts = {
-            'format': 'bestaudio/best',
+            # محاولة طلب صيغة m4a مباشرة (غالباً تكون متاحة وسريعة)
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'outtmpl': os.path.join(temp_dir, 'youtube_audio_%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
@@ -270,6 +271,9 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
             'no_check_certificate': True,
             'extractaudio': True,
             'audioformat': 'wav',
+            
+            # خيارات الشبكة المتقدمة
+            'socket_timeout': 30,
             
             # استخدام ملف الكوكيز إن وجد
             'cookiefile': cookie_file_path if cookie_file_path else None,
