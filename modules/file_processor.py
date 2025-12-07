@@ -9,6 +9,10 @@ class ProcessController:
     
     def request_stop(self):
         self.should_stop = True
+
+    def stop(self):
+        """Alias for request_stop to match app.py usage"""
+        self.request_stop()
     
     def check_stop(self):
         return self.should_stop

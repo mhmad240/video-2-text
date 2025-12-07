@@ -137,6 +137,14 @@ def reset_session():
     st.session_state.stage_details = ""
     st.session_state.translating = False
     st.session_state.controller = ProcessController()
+    
+    # ✅ تنظيف المدخلات (بفضل استخدام keys في ui_components)
+    if "youtube_url" in st.session_state:
+        st.session_state["youtube_url"] = ""
+    if "file_uploader" in st.session_state:
+        # Streamlit resets file_uploader if the key is removed
+        del st.session_state["file_uploader"]
+        
     st.experimental_rerun() if hasattr(st, "experimental_rerun") else st.rerun()
 
 def main():

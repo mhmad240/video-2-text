@@ -133,8 +133,10 @@ def render_file_upload_section():
         "اسحب وأفلت الملف هنا", 
         type=['mp4', 'avi', 'mov', 'mkv', 'mpeg4'],
         label_visibility="collapsed",
-        help="Limit 800 MB per file • MP4, AVI, MOV, MKV, MPEG4"
+        help="Limit 800 MB per file • MP4, AVI, MOV, MKV, MPEG4",
+        key="file_uploader"
     )
+    
     
     # عرض معلومات الحجم إذا كان الملف كبيراً
     if uploaded_file:
@@ -147,7 +149,7 @@ def render_file_upload_section():
 def render_youtube_section():
     """عرض قسم رابط يوتيوب"""
     st.subheader("🔗 رابط يوتيوب")
-    url = st.text_input("أدخل رابط يوتيوب:", label_visibility="collapsed")
+    url = st.text_input("أدخل رابط يوتيوب:", label_visibility="collapsed", key="youtube_url")
     
     cookies = None
     
