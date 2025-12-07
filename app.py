@@ -221,7 +221,6 @@ def main():
                             st.session_state.controller,
                             translation_progress_callback  # ✅ إضافة progress_callback
                         )
-                        st.success("✅ تمت الترجمة بنجاح!")
                 except Exception as e:
                     st.error(f"❌ حدث خطأ في الترجمة: {e}")
                 finally:
