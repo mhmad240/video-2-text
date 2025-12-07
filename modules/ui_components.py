@@ -150,14 +150,30 @@ def render_youtube_section():
     url = st.text_input("أدخل رابط يوتيوب:", label_visibility="collapsed")
     
     cookies = None
+    
+    # 🔐 التحقق من وجود كوكيز في الأسرار (Secrets)
+    secret_cookies = None
+    try:
+        if "YOUTUBE_COOKIES" in st.secrets:
+            secret_cookies = st.secrets["YOUTUBE_COOKIES"]
+    except:
+        pass
+
     with st.expander("🍪 إعدادات متقدمة (لمشاكل التحميل)"):
+        if secret_cookies:
+            st.success("🔒 تم اكتشاف كوكيز مخزنة في الأسرار (Secrets) وسيتم استخدامها تلقائياً.")
+            st.info("يمكنك تجاوزها بإدخال كوكيز جديدة أدناه:")
+        
         st.write("إذا فشل التحميل بسبب الحظر (403/Sign in)، قم بإضافة ملفات تعريف الارتباط (Cookies) هنا.")
-        cookies = st.text_area(
+        manual_cookies = st.text_area(
             "الصق محتوى Netscape Cookies هنا:", 
-            placeholder="# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/...",
+            placeholder="# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/..." if not secret_cookies else "تم استخدام الكوكيز من الأسرار (اترك هذا فارغاً للاستخدام الافتراضي)",
             height=150
         )
         st.info("💡 يمكنك استخدام إضافة 'Get cookies.txt LOCALLY' للمتصفح للحصول عليها.")
+    
+    # استخدام المدخل اليدوي أولاً، ثم الأسرار
+    cookies = manual_cookies if manual_cookies.strip() else secret_cookies
         
     return url, cookies
 
