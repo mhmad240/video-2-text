@@ -142,7 +142,7 @@ video-2-text-master/
 ```toml
 YOUTUBE_COOKIES = """
 # Netscape HTTP Cookie File
-.youtube.com	TRUE	/	FALSE	17676878	VISITOR_INFO1_LIVE	...
+# (الصق محتوى ملف الكوكيز كاملاً هنا أسفل هذا السطر...)
 """
 ```
 *سيقوم التطبيق بقراءتها تلقائياً بدلاً من إدخالها يدوياً في كل مرة.*
