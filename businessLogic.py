@@ -400,8 +400,11 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 # Raise informative error
                 raise Exception(f"فشل جميع محاولات التحميل.\nخطأ المصدر: {str(e)}\nخطأ البديل: {str(pytube_error)}")
     
-    # End of function (no return None, so it returns None implicitly if successful path returns early, 
-    # but here we raise Exception on failure, so effectively it either returns valid path or raises)
+    # End of function
+    
+    except Exception as e:
+        # Re-raise to let the caller handle it
+        raise e
 
 
 # دوال مساعدة للترجمة (للتوافق مع الإصدارات السابقة)
