@@ -116,7 +116,28 @@ def start_processing(uploaded_file, url, model, cached_model, device_info, cooki
     st.session_state.process_running = False
     st.rerun()
 
-# ... (Keep stop_processing and reset_session) ...
+def stop_processing():
+    """طلب إيقاف المعالجة"""
+    st.session_state.stop_requested = True
+    st.session_state.controller.stop()
+    st.warning("⚠️ جاري الإيقاف... يرجى الانتظار")
+    # لا نقوم بـ rerun هنا للسماح للكود بالتحقق من العلم
+
+def reset_session():
+    """إعادة تعيين الجلسة بالكامل"""
+    # الاحتفاظ بالنموذج المخبأ فقط
+    st.session_state.original_text = None
+    st.session_state.translated_text = None
+    st.session_state.process_running = False
+    st.session_state.process_stopped = False
+    st.session_state.stop_requested = False
+    st.session_state.progress_state = None
+    st.session_state.current_progress = 0
+    st.session_state.current_stage = ""
+    st.session_state.stage_details = ""
+    st.session_state.translating = False
+    st.session_state.controller = ProcessController()
+    st.experimental_rerun() if hasattr(st, "experimental_rerun") else st.rerun()
 
 def main():
     st.title("🎥 Video2Text - تحويل الفيديو إلى نص")
