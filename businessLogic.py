@@ -392,6 +392,10 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 raise Exception(f"عذراً، فشلت جميع محاولات التحميل (الكوكيز، التمويه، والبدائل). يرجى التأكد من صلاحية الكوكيز أو الرابط.")
         
         return None
+    
+    except Exception as e:
+        print(f"❌ خطأ نهائي في تحميل يوتيوب: {e}")
+        return None
 
 # دوال مساعدة للترجمة (للتوافق مع الإصدارات السابقة)
 def split_long_text(text, max_length=4000):
