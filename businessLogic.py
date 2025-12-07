@@ -275,7 +275,9 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
             'outtmpl': os.path.join(temp_dir, 'youtube_audio_%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
-            'ignoreerrors': True,
+            'quiet': True,
+            'no_warnings': True,
+            'ignoreerrors': False,  # ✅ Catch errors explicitly instead of returning None
             'no_check_certificate': True,
             'extractaudio': True,
             'audioformat': 'wav',
@@ -311,11 +313,14 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 }
             }
         
-        # 🏁 محاولة أولى: التحميل باستخدام الإعدادات الحالية (كوكيز أو تمويه)
+        # 🏁 محاولة أولى
         success = False
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(youtube_url, download=False)
+                if info is None:
+                    raise Exception("yt-dlp returned None (Video unavailable or blocked)")
+                
                 video_title = info.get('title', 'youtube_video')
                 video_id = info.get('id', 'unknown')
                 print(f"🎬 جاري تحميل: {video_title}")
