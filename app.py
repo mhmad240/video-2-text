@@ -145,7 +145,7 @@ def reset_session():
         # Streamlit resets file_uploader if the key is removed
         del st.session_state["file_uploader"]
         
-    st.experimental_rerun() if hasattr(st, "experimental_rerun") else st.rerun()
+    # st.rerun() removed - not needed in callback context as Streamlit reruns automatically
 
 def main():
     st.title("🎥 Video2Text - تحويل الفيديو إلى نص")
@@ -219,15 +219,15 @@ def main():
             st.session_state.process_running,
             st.session_state.stop_requested,
             has_file_or_url,
-            cached_model
+            cached_model,
+            reset_callback=reset_session  # ✅ تمرير دالة التنظيف مباشرة
         )
         
         if button_action == "start":
             start_processing(uploaded_file, url, model, cached_model, device_info, cookies)  # ✅ تمرير cookies
         elif button_action == "stop":
             stop_processing()
-        elif button_action == "reset":
-            reset_session()
+        # elif button_action == "reset":  <-- Removed, handled by callback
         
         # عرض النتائج إذا كانت موجودة
         if st.session_state.original_text:

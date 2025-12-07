@@ -186,7 +186,7 @@ def render_model_selection():
     model = st.selectbox("اختر نموذج التحويل:", models, index=3)
     return model
 
-def render_control_buttons(process_running, stop_requested, has_file_or_url, cached_model):
+def render_control_buttons(process_running, stop_requested, has_file_or_url, cached_model, reset_callback=None):
     """عرض أزرار التحكم"""
     col1, col2, col3 = st.columns(3)
     
@@ -201,7 +201,7 @@ def render_control_buttons(process_running, stop_requested, has_file_or_url, cac
             return "stop"
     
     with col3:
-        if st.button("🔄 جلسة جديدة", type="secondary", use_container_width=True):
-            return "reset"
+        # ✅ استخدام callback لتنظيف الحالة قبل إعادة التشغيل
+        st.button("🔄 جلسة جديدة", type="secondary", use_container_width=True, on_click=reset_callback)
     
     return None
