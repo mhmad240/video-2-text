@@ -76,12 +76,20 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
         # ✅ تحديد نوع المصدر واستخراج الصوت
         source = source.strip()  # Clean input
         if source.startswith(('http://', 'https://')):
-            audio_path = download_youtube_audio_optimized(source, progress_callback, cookies)
+            try:
+                audio_path = download_youtube_audio_optimized(source, progress_callback, cookies)
+            except Exception as dl_error:
+                # Capture the real error from youtube download
+                progress.error = f"❌ Error: {str(dl_error)}"
+                if progress_callback:
+                    progress_callback(progress)
+                return progress.error
         else:
             audio_path = extract_audio_optimized(source, progress_callback)
         
         if not audio_path or not os.path.exists(audio_path):
-            progress.error = "❌ Error: لم يتم إنشاء ملف الصوت"
+            if not progress.error:
+                progress.error = "❌ Error: لم يتم إنشاء ملف الصوت"
             if progress_callback:
                 progress_callback(progress)
             return progress.error
@@ -393,9 +401,12 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
         
         return None
     
-    except Exception as e:
-        print(f"❌ خطأ نهائي في تحميل يوتيوب: {e}")
-        return None
+            except Exception as pytube_error:
+                print(f"❌ فشل pytube أيضاً: {pytube_error}")
+                # Raise the original error combined with fallback error
+                raise Exception(f"فشل جميع محاولات التحميل (الكوكيز، التمويه، والبدائل).\nخطأ: {str(e)}")
+    
+    # except Exception as e: ... removed to let error propagate
 
 # دوال مساعدة للترجمة (للتوافق مع الإصدارات السابقة)
 def split_long_text(text, max_length=4000):
