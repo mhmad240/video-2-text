@@ -64,10 +64,12 @@ def process_youtube_url(url, model, device_info, progress_callback, controller, 
         )
         
         if not controller.check_stop():
-            if original_text and not original_text.startswith("❌ Error"):
+            if original_text and not original_text.startswith("❌"):
                 return original_text, "✅ تم تحويل الفيديو إلى نص بنجاح!"
             else:
-                return f"❌ Error: {original_text}", "❌ فشل تحويل الفيديو إلى نص"
+                # Avoid double prefixing
+                error_msg = original_text if original_text.startswith("❌") else f"❌ Error: {original_text}"
+                return error_msg, "❌ فشل تحويل الفيديو إلى نص"
         else:
             return None, "⏹️ تم إيقاف العملية"
                 
