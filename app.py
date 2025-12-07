@@ -7,6 +7,19 @@ import sys
 # Force UTF-8 encoding check removed for Streamlit Cloud compatibility
 # Streamlit handles encoding internally
 
+# ✅ إعداد السجلات لتظهر فوراً في Streamlit Cloud
+import logging
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+# فرض تحديث السجلات فوراً
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(line_buffering=True)
+
+# استبدال الطباعة العادية بالطباعة مع فرض التحديث
+_original_print = print
+def print(*args, **kwargs):
+    kwargs.setdefault('flush', True)
+    _original_print(*args, **kwargs)
+
 
 # إضافة مسار مجلد modules يدوياً
 current_dir = os.path.dirname(os.path.abspath(__file__))
