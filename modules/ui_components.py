@@ -164,7 +164,8 @@ def render_youtube_section():
 def render_model_selection():
     """عرض اختيار النموذج"""
     models = ["tiny", "base", "small", "medium", "large"]
-    model = st.selectbox("اختر نموذج التحويل:", models)
+    # جعل Medium هو الافتراضي (index=3) كما طلب المستخدم
+    model = st.selectbox("اختر نموذج التحويل:", models, index=3)
     return model
 
 def render_control_buttons(process_running, stop_requested, has_file_or_url, cached_model):
