@@ -397,16 +397,12 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                     
             except Exception as pytube_error:
                 print(f"❌ فشل pytube أيضاً: {pytube_error}")
-                raise Exception(f"عذراً، فشلت جميع محاولات التحميل (الكوكيز، التمويه، والبدائل). يرجى التأكد من صلاحية الكوكيز أو الرابط.")
-        
-        return None
+                # Raise informative error
+                raise Exception(f"فشل جميع محاولات التحميل.\nخطأ المصدر: {str(e)}\nخطأ البديل: {str(pytube_error)}")
     
-            except Exception as pytube_error:
-                print(f"❌ فشل pytube أيضاً: {pytube_error}")
-                # Raise the original error combined with fallback error
-                raise Exception(f"فشل جميع محاولات التحميل (الكوكيز، التمويه، والبدائل).\nخطأ: {str(e)}")
-    
-    # except Exception as e: ... removed to let error propagate
+    # End of function (no return None, so it returns None implicitly if successful path returns early, 
+    # but here we raise Exception on failure, so effectively it either returns valid path or raises)
+
 
 # دوال مساعدة للترجمة (للتوافق مع الإصدارات السابقة)
 def split_long_text(text, max_length=4000):
