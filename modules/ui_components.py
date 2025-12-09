@@ -40,7 +40,7 @@ def display_results(original_text, translated_text, translating, controller):
     translate_requested = False
     
     # تبويبات للتنقل بين النتائج
-    tab1, tab2 = st.tabs(["النص الأصلي", "الترجمة العربية"])
+    tab1, tab2, tab3 = st.tabs(["النص الأصلي", "الترجمة العربية", "🎨 خيارات التنسيق"])
     
     with tab1:
         st.text_area("النص المستخرج:", original_text, height=300, key="original_display")
@@ -62,14 +62,12 @@ def display_results(original_text, translated_text, translating, controller):
                        disabled=translate_disabled,
                        use_container_width=True,
                        key="translate_btn"):
-                translate_requested = True  # إشارة لبدء الترجمة
+                translate_requested = True
     
     with tab2:
         if translated_text:
-            # ✅ عرض النص المترجم بشكل واضح
             st.text_area("الترجمة العربية:", translated_text, height=300, key="translated_display")
             
-            # ✅ زر تحميل النص المترجم
             st.download_button(
                 label="📥 تحميل النص المترجم",
                 data=translated_text,
@@ -78,13 +76,18 @@ def display_results(original_text, translated_text, translating, controller):
                 use_container_width=True
             )
             
-            # ✅ عرض معلومات عن الترجمة
             st.success(f"✅ تمت ترجمة {len(translated_text.split())} كلمة بنجاح!")
         else:
             if translating:
                 st.info("🔄 جاري الترجمة... يرجى الانتظار")
             else:
                 st.info("🌐 استخدم زر 'ترجمة إلى العربية' في تبويب النص الأصلي لبدء الترجمة")
+    
+    with tab3:
+        # عرض خيارات التنسيق
+        from modules.text_formatter_ui import render_text_formatting_options
+        segments = st.session_state.get('segments', [])
+        render_text_formatting_options(original_text, segments)
     
     return translate_requested
 

@@ -18,6 +18,14 @@ if sys.platform == 'win32':
     except Exception:
         pass  # Ignore if already wrapped or in Streamlit environment
 
+# متغير global لحفظ segments من آخر عملية تحويل
+_last_segments = []
+
+def get_last_segments():
+    """الحصول على segments من آخر عملية تحويل"""
+    global _last_segments
+    return _last_segments
+
 # 🔧 الإعداد الذكي لـ FFmpeg (متوافق مع Windows و Linux/Cloud)
 import shutil
 
@@ -126,10 +134,14 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
             result_text = result.get('text', '')
             # حفظ segments للاستخدام لاحقاً (timestamps, SRT export)
             segments_data = result.get('segments', [])
+            # حفظ segments في متغير global للوصول إليها من app.py
+            global _last_segments
+            _last_segments = segments_data
         else:
             # للتوافق مع الإصدارات القديمة
             result_text = result
             segments_data = []
+            _last_segments = []
         
         # تنظيف الملف المؤقت
         if os.path.exists(audio_path):
