@@ -2,7 +2,8 @@
 مكون واجهة المستخدم لتنسيق النص
 """
 import streamlit as st
-from businessLogic import format_text_with_sentences, format_with_timestamps, export_as_srt
+from businessLogic import format_text_with_sentences, format_with_timestamps, export_as_srt, get_last_segments
+from modules.file_processor import translate_to_arabic
 
 def render_text_formatting_options(original_text, segments):
     """عرض خيارات تنسيق النص"""
@@ -10,6 +11,10 @@ def render_text_formatting_options(original_text, segments):
         return
     
     st.subheader("🎨 خيارات التنسيق")
+    
+    # إذا لم تكن segments موجودة، جرب الحصول عليها من businessLogic
+    if not segments:
+        segments = get_last_segments()
     
     col1, col2, col3 = st.columns(3)
     
@@ -26,7 +31,8 @@ def render_text_formatting_options(original_text, segments):
             st.session_state.show_timestamped = True
     
     with col3:
-        if segments:
+        # إظهار زر SRT دائماً إذا كانت segments موجودة
+        if segments and len(segments) > 0:
             srt_content = export_as_srt(segments)
             st.download_button(
                 label="📥 تحميل SRT",
@@ -35,17 +41,46 @@ def render_text_formatting_options(original_text, segments):
                 mime="text/plain",
                 help="ملف ترجمة للفيديو"
             )
+        else:
+            st.info("⏱️ Timestamps غير متاحة")
     
     # عرض النص المنسق
     if st.session_state.get('show_formatted', False):
         st.markdown("### 📝 النص المنسق (جملة لكل سطر)")
-        st.text_area("", st.session_state.formatted_text, height=300, key="formatted_display")
-        st.download_button(
-            "💾 تحميل النص المنسق",
-            st.session_state.formatted_text,
-            file_name="formatted_text.txt",
-            mime="text/plain"
-        )
+        
+        # خيار ترجمة النص المنسق
+        col_a, col_b = st.columns([3, 1])
+        with col_b:
+            if st.button("🌐 ترجمة المنسق", key="translate_formatted"):
+                with st.spinner("جاري ترجمة النص المنسق..."):
+                    from businessLogic import ProcessController
+                    controller = ProcessController()
+                    translated_formatted = translate_to_arabic(
+                        st.session_state.formatted_text,
+                        controller
+                    )
+                    st.session_state.formatted_text_ar = translated_formatted
+        
+        # عرض النص (مترجم أو أصلي)
+        text_to_show = st.session_state.get('formatted_text_ar', st.session_state.formatted_text)
+        st.text_area("", text_to_show, height=300, key="formatted_display")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                "💾 تحميل النص المنسق",
+                st.session_state.formatted_text,
+                file_name="formatted_text.txt",
+                mime="text/plain"
+            )
+        with col2:
+            if 'formatted_text_ar' in st.session_state:
+                st.download_button(
+                    "💾 تحميل المترجم",
+                    st.session_state.formatted_text_ar,
+                    file_name="formatted_text_arabic.txt",
+                    mime="text/plain"
+                )
     
     if st.session_state.get('show_timestamped', False):
         st.markdown("### ⏱️ النص مع Timestamps")
