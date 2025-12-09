@@ -119,7 +119,17 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
             progress_callback(progress)
         
         # ✅ استخدام النموذج المخبأ للتحويل
-        result_text = perform_transcription(audio_path, model, device_info, progress_callback)
+        result = perform_transcription(audio_path, model, device_info, progress_callback)
+        
+        # استخراج النص من النتيجة
+        if isinstance(result, dict):
+            result_text = result.get('text', '')
+            # حفظ segments للاستخدام لاحقاً (timestamps, SRT export)
+            segments_data = result.get('segments', [])
+        else:
+            # للتوافق مع الإصدارات القديمة
+            result_text = result
+            segments_data = []
         
         # تنظيف الملف المؤقت
         if os.path.exists(audio_path):
@@ -140,7 +150,7 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
         return result_text
         
     except Exception as e:
-        progress.error = f"❌ Error: {str(e)}"
+        progress.error = f"❌ Exception: {str(e)}"
         progress.current_stage = "خطأ"
         progress.stage_details = f"حدث خطأ: {str(e)}"
         if progress_callback:
