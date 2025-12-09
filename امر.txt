@@ -9,3 +9,15 @@ powershell
 
 تشغيل التطبيق
 streamlit run app.py
+
+
+_________________________
+
+افتح PowerShell كمسؤول:
+ابحث عن "PowerShell" في قائمة ابدأ
+انقر بزر الماوس الأيمن → "تشغيل كمسؤول"
+انتقل لمجلد المشروع:
+cd D:\video-2-text-master
+
+شغّل التطبيق
+.\video2text_env\Scripts\python -m streamlit run app.py

@@ -57,6 +57,7 @@ def initialize_session_state():
     session_defaults = {
         'original_text': None,
         'translated_text': None,
+        'segments': [],  # لحفظ segments مع timestamps
         'process_running': False,
         'process_stopped': False,
         'stop_requested': False,
@@ -66,7 +67,7 @@ def initialize_session_state():
         'stage_details': "",
         'translating': False,
         'controller': ProcessController(),
-        'device_info': None  # إضافة تخزين معلومات الجهاز
+        'device_info': None
     }
     
     for key, value in session_defaults.items():
