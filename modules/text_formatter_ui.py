@@ -53,8 +53,8 @@ def render_text_formatting_options(original_text, segments):
         with col_b:
             if st.button("🌐 ترجمة المنسق", key="translate_formatted"):
                 with st.spinner("جاري ترجمة النص المنسق..."):
-                    from businessLogic import ProcessController
-                    controller = ProcessController()
+                    # استخدام controller من session_state
+                    controller = st.session_state.get('controller')
                     translated_formatted = translate_to_arabic(
                         st.session_state.formatted_text,
                         controller
