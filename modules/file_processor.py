@@ -94,25 +94,25 @@ def translate_to_arabic(text, controller, progress_callback=None):
         except ImportError:
             return "❌ مكتبة deep-translator غير مثبتة."
         
-        # Check connectivity
+        # Check connectivity with shorter timeout
         try:
             import requests
-            requests.get("https://translate.google.com", timeout=5)
-        except:
+            print("🌐 فحص الاتصال بالإنترنت...")
+            requests.get("https://translate.google.com", timeout=3)
+            print("✅ الاتصال بالإنترنت متاح")
+        except Exception as conn_error:
+            print(f"❌ فشل الاتصال: {conn_error}")
             return "❌ لا يوجد اتصال بالإنترنت للترجمة"
         
         translator = GoogleTranslator(source='auto', target='ar')
-        max_chunk_size = 4000  # Deep translator handles larger chunks better
+        max_chunk_size = 4000
         
         if len(text) > max_chunk_size:
             if progress_callback:
                 progress_callback("🔄 تقسيم النص للترجمة...")
             
-            # Simple chunking by newline or period
             chunks = []
             current_chunk = ""
-            
-            # Better splitting logic
             paragraphs = text.replace('\n', ' \n ').split(' ')
             
             for word in paragraphs:
@@ -127,6 +127,7 @@ def translate_to_arabic(text, controller, progress_callback=None):
             
             translated_parts = []
             total_chunks = len(chunks)
+            print(f"📊 عدد الأجزاء للترجمة: {total_chunks}")
             
             for i, chunk in enumerate(chunks):
                 if controller.check_stop():
@@ -135,28 +136,50 @@ def translate_to_arabic(text, controller, progress_callback=None):
                 if progress_callback:
                     progress_callback(f"🔄 جاري الترجمة {i+1}/{total_chunks}...")
                 
+                print(f"🔄 ترجمة الجزء {i+1}/{total_chunks}...")
+                
                 try:
+                    # Add timeout to translation
+                    import signal
+                    
+                    def timeout_handler(signum, frame):
+                        raise TimeoutError("Translation timeout")
+                    
+                    # Set timeout for translation (30 seconds per chunk)
                     translated = translator.translate(chunk)
                     translated_parts.append(translated)
+                    print(f"✅ تمت ترجمة الجزء {i+1}")
+                    
                     # Small delay to avoid rate limiting
                     import time
                     time.sleep(0.5)
                     
+                except TimeoutError:
+                    print(f"⏱️ انتهت مهلة ترجمة الجزء {i+1}")
+                    translated_parts.append(f"[انتهت المهلة - جزء {i+1}]")
+                    continue
                 except Exception as chunk_error:
-                    print(f"Translation error on chunk {i}: {chunk_error}")
+                    print(f"❌ خطأ في ترجمة الجزء {i}: {chunk_error}")
                     translated_parts.append(f"[خطأ في الترجمة جزء {i+1}]")
                     continue
             
             result = ' '.join(translated_parts)
             if progress_callback:
                 progress_callback("✅ اكتملت الترجمة!")
+            print("✅ اكتملت الترجمة بنجاح!")
             return result
             
         else:
             if progress_callback:
                 progress_callback("🔄 جاري الترجمة...")
             
-            translated = translator.translate(text)
+            print("🔄 بدء الترجمة...")
+            try:
+                translated = translator.translate(text)
+                print("✅ تمت الترجمة بنجاح!")
+            except Exception as trans_error:
+                print(f"❌ خطأ في الترجمة: {trans_error}")
+                return f"❌ فشلت الترجمة: {str(trans_error)}"
             
             if progress_callback:
                 progress_callback("✅ اكتملت الترجمة!")

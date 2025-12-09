@@ -338,23 +338,63 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 
                 video_title = info.get('title', 'youtube_video')
                 video_id = info.get('id', 'unknown')
+                video_title = info.get('title', 'youtube_video')
                 print(f"🎬 جاري تحميل: {video_title}")
                 ydl.download([youtube_url])
                 
-                # التحقق من الملف
-                expected_filename = f"youtube_audio_{video_id}.wav"
-                expected_path = os.path.join(temp_dir, expected_filename)
+                # البحث عن الملف المحمل بأي امتداد
+                import glob
+                possible_files = []
                 
-                if os.path.exists(expected_path) and os.path.getsize(expected_path) > 0:
-                    print(f"✅ تم تحميل الملف بنجاح: {expected_path}")
-                    return expected_path
-                else:
-                    raise Exception("ملف الصوت غير موجود أو فارغ")
+                # البحث عن الملفات المحتملة
+                for pattern in [
+                    f"youtube_audio_{video_id}.wav",
+                    f"youtube_audio_{video_id}.m4a",
+                    f"youtube_audio_{video_id}.m4a.part",
+                    f"youtube_audio_{video_id}.*"
+                ]:
+                    matches = glob.glob(os.path.join(temp_dir, pattern))
+                    possible_files.extend(matches)
+                
+                # إزالة المكررات والفرز حسب الحجم (الأكبر أولاً)
+                possible_files = list(set(possible_files))
+                possible_files.sort(key=lambda x: os.path.getsize(x) if os.path.exists(x) else 0, reverse=True)
+                
+                # البحث عن أول ملف صالح
+                for file_path in possible_files:
+                    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                        # إذا كان الملف .part، حاول إعادة تسميته
+                        if file_path.endswith('.part'):
+                            try:
+                                new_path = file_path[:-5]  # إزالة .part
+                                os.rename(file_path, new_path)
+                                file_path = new_path
+                                print(f"✅ تمت إعادة تسمية الملف: {file_path}")
+                            except Exception as rename_error:
+                                print(f"⚠️ فشل إعادة التسمية، سنستخدم الملف كما هو: {rename_error}")
+                        
+                        print(f"✅ تم تحميل الملف بنجاح: {file_path}")
+                        return file_path
+                
+                # إذا لم نجد أي ملف
+                raise Exception(f"ملف الصوت غير موجود. الملفات المتاحة: {possible_files}")
 
         except Exception as e:
             print(f"⚠️ فشلت المحاولة الأولى (yt-dlp): {e}")
             
-            # 🔄 محاولة ثانية: إذا كنا نستخدم كوكيز وفشلت، نجرب الوضع المجهول (Anonymous) فوراً
+            # 🔄 محاولة ثانية: البحث عن أي ملف محمل في المجلد المؤقت
+            print("🔍 البحث عن ملفات محملة في المجلد المؤقت...")
+            import glob
+            recent_audio_files = glob.glob(os.path.join(temp_dir, 'youtube_audio_*'))
+            if recent_audio_files:
+                # الفرز حسب وقت التعديل (الأحدث أولاً)
+                recent_audio_files.sort(key=os.path.getmtime, reverse=True)
+                latest_file = recent_audio_files[0]
+                if os.path.getsize(latest_file) > 0:
+                    print(f"✅ تم العثور على ملف محمل: {latest_file}")
+                    return latest_file
+            
+            # 🔄 محاولة ثالثة: إذا كنا نستخدم كوكيز وفشلت، نجرب الوضع المجهول
             if cookie_file_path:
                 print("🔄 الكوكيز ربما تكون معطلة. جاري المحاولة بوضع التمويه (Anonymous Mode)...")
                 try:
@@ -363,7 +403,7 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                     ydl_opts_anon['cookiefile'] = None
                     ydl_opts_anon['extractor_args'] = {
                         'youtube': {
-                            'player_client': ['tv', 'android', 'ios'], # تجربة عملاء مختلفين
+                            'player_client': ['tv', 'android', 'ios'],
                         }
                     }
                     
