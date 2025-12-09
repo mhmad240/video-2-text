@@ -160,20 +160,99 @@ def perform_transcription(audio_path: str, model, device_info: dict, progress_ca
         # ✅ التحويل باستخدام النموذج المخبأ
         segments, info = model.transcribe(audio_path, beam_size=5)
         
-        # جمع النص من جميع المقاطع
+        # جمع النص والـ segments
         text_parts = []
+        segments_data = []
+        
         for segment in segments:
             text_parts.append(segment.text)
+            # حفظ segment مع timestamps
+            segments_data.append({
+                'start': segment.start,
+                'end': segment.end,
+                'text': segment.text.strip()
+            })
         
         text = " ".join(text_parts)
         print("✅ تم التحويل بنجاح باستخدام Faster-Whisper!")
         print(f"📊 معلومات التحويل: اللغة={info.language}, احتمال اللغة={info.language_probability:.2f}")
         
-        return text
+        # إرجاع النص مع segments
+        return {
+            'text': text,
+            'segments': segments_data,
+            'language': info.language,
+            'language_probability': info.language_probability
+        }
         
     except Exception as e:
         print(f"❌ خطأ في التحويل باستخدام Faster-Whisper: {e}")
-        return f"Error during transcription: {str(e)}"
+        return {
+            'text': f"Error during transcription: {str(e)}",
+            'segments': [],
+            'language': 'unknown',
+            'language_probability': 0.0
+        }
+
+def format_text_with_sentences(text):
+    """تنسيق النص بحيث تكون كل جملة في سطر منفصل"""
+    import re
+    # تقسيم النص حسب علامات الترقيم
+    sentences = re.split(r'([.!?]+\s+)', text)
+    
+    formatted_lines = []
+    current_sentence = ""
+    
+    for i, part in enumerate(sentences):
+        current_sentence += part
+        # إذا كانت علامة ترقيم، أضف السطر
+        if re.match(r'[.!?]+\s+', part) or i == len(sentences) - 1:
+            if current_sentence.strip():
+                formatted_lines.append(current_sentence.strip())
+            current_sentence = ""
+    
+    return "\n".join(formatted_lines)
+
+def format_with_timestamps(segments_data):
+    """تنسيق النص مع timestamps"""
+    formatted_lines = []
+    
+    for segment in segments_data:
+        # تحويل الوقت إلى صيغة [HH:MM:SS]
+        start_time = format_timestamp(segment['start'])
+        formatted_lines.append(f"[{start_time}] {segment['text']}")
+    
+    return "\n".join(formatted_lines)
+
+def format_timestamp(seconds):
+    """تحويل الثواني إلى صيغة HH:MM:SS"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+def export_as_srt(segments_data):
+    """تصدير كملف SRT للترجمة"""
+    srt_lines = []
+    
+    for i, segment in enumerate(segments_data, 1):
+        start = format_srt_timestamp(segment['start'])
+        end = format_srt_timestamp(segment['end'])
+        
+        srt_lines.append(f"{i}")
+        srt_lines.append(f"{start} --> {end}")
+        srt_lines.append(segment['text'])
+        srt_lines.append("")  # سطر فارغ
+    
+    return "\n".join(srt_lines)
+
+def format_srt_timestamp(seconds):
+    """تحويل الثواني إلى صيغة SRT (HH:MM:SS,mmm)"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millis = int((seconds % 1) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 def extract_audio_optimized(video_path: str, progress_callback=None) -> str:
     """استخراج الصوت مع محاولات متعددة"""

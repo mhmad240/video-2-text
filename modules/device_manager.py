@@ -4,8 +4,17 @@ import sys
 import ctypes
 import os
 
+# Cache لتجنب الرسائل المتكررة
+_cuda_setup_cache = None
+
 def setup_cuda_environment():
-    """إعداد بيئة CUDA و cuDNN ديناميكياً"""
+    """إعداد بيئة CUDA و cuDNN ديناميكياً (مع cache)"""
+    global _cuda_setup_cache
+    
+    # إذا تم الإعداد مسبقاً، إرجاع النتيجة المخزنة
+    if _cuda_setup_cache is not None:
+        return _cuda_setup_cache
+    
     # مسارات CUDA الأساسية
     cuda_paths = [
         r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2\bin",
@@ -21,12 +30,23 @@ def setup_cuda_environment():
             paths_added.append(path)
             print(f"✅ تم إضافة مسار CUDA: {path}")
     
-    return False, paths_added  # إرجاع false لـ cuDNN
+    # حفظ النتيجة في cache
+    _cuda_setup_cache = (False, paths_added)
+    return _cuda_setup_cache
+
+# Cache لمعلومات الجهاز
+_device_info_cache = None
 
 def setup_compute_device():
     """
-    إعداد جهاز الحساب - إجبار استخدام CPU للإستقرار
+    إعداد جهاز الحساب - إجبار استخدام CPU للإستقرار (مع cache)
     """
+    global _device_info_cache
+    
+    # إذا تم الإعداد مسبقاً، إرجاع النتيجة المخزنة بدون طباعة
+    if _device_info_cache is not None:
+        return _device_info_cache
+    
     device_info = {
         'device': 'cpu',
         'compute_type': 'int8',
@@ -38,6 +58,9 @@ def setup_compute_device():
     
     print(f"🎯 الإعداد النهائي: {device_info['reason']}")
     print(f"🎯 نوع الحساب: {device_info['compute_type']}")
+    
+    # حفظ النتيجة في cache
+    _device_info_cache = device_info
     return device_info
 
 def get_device_info():
