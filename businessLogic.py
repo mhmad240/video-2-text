@@ -5,12 +5,22 @@ import ssl
 import os
 import subprocess
 import time
+import io
 from moviepy.editor import VideoFileClip
 import yt_dlp
 import numpy as np
 
+# Force UTF-8 encoding for Windows console (must be before any print statements)
+if sys.platform == 'win32':
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass  # Ignore if already wrapped or in Streamlit environment
+
 # 🔧 الإعداد الذكي لـ FFmpeg (متوافق مع Windows و Linux/Cloud)
 import shutil
+
 
 def get_ffmpeg_path():
     # 1. البحث في مسار النظام (System PATH)
@@ -27,8 +37,6 @@ def get_ffmpeg_path():
     return None, None
 
 ffmpeg_path, ffmpeg_dir = get_ffmpeg_path()
-
-# Force UTF-8 encoding check removed for Streamlit Cloud compatibility
 
 
 if ffmpeg_path:
@@ -61,11 +69,14 @@ class ProgressState:
         self.is_completed = False
         self.error = None
 
-def transcribe_audio_optimized(source: str, model, device_info: dict, progress_callback=None, cookies=None):
+def transcribe_audio_optimized(source: str, model, device_info: dict, progress_callback=None, cookies=None, controller=None):
     """✅ دالة محسنة للتحويل باستخدام النموذج المخبأ والمعلومات المسبقة"""
     progress = ProgressState()
     
     try:
+        if controller and controller.check_stop():
+             return "⏹️ تم إيقاف العملية"
+
         # المرحلة 1: التحضير واستخراج الصوت
         progress.current_stage = "استخراج الصوت"
         progress.progress = 25
@@ -74,12 +85,15 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
             progress_callback(progress)
         
         # ✅ تحديد نوع المصدر واستخراج الصوت
-        source = source.strip()  # Clean input
+        source = source.strip()
+        audio_path = None
+        
         if source.startswith(('http://', 'https://')):
             try:
-                audio_path = download_youtube_audio_optimized(source, progress_callback, cookies)
+                audio_path = download_youtube_audio_optimized(source, progress_callback, cookies, controller)
             except Exception as dl_error:
-                # Capture the real error from youtube download
+                if "STOP_REQUESTED" in str(dl_error):
+                    return "⏹️ تم إيقاف العملية"
                 progress.error = f"❌ Error: {str(dl_error)}"
                 if progress_callback:
                     progress_callback(progress)
@@ -94,7 +108,9 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
                 progress_callback(progress)
             return progress.error
 
-        # ... (rest of function remains similar but let's just make sure we don't break indentation)
+        if controller and controller.check_stop():
+             return "⏹️ تم إيقاف العملية"
+
         # ✅ المرحلة 2: استخدام النموذج المخبأ مباشرة (0% تقدم - فوري)
         progress.current_stage = "التحويل إلى نص"
         progress.progress = 75
@@ -130,15 +146,6 @@ def transcribe_audio_optimized(source: str, model, device_info: dict, progress_c
         if progress_callback:
             progress_callback(progress)
         return progress.error
-
-# ... (perform_transcription and extract_audio_optimized remain unchanged, skipping them in diff if possible) ...
-# Actually better to target specific blocks or replace functions one by one if they are far apart. 
-# But here I will replace the whole block from 61 to end of download function to be safe and consistent.
-
-# Wait, replace_file_content limit is contiguous. 
-# Let's do transcribe_audio_optimized first.
-
-# (Redoing tool call below correctly for split edits)  
 
 
 def perform_transcription(audio_path: str, model, device_info: dict, progress_callback=None):
@@ -232,7 +239,7 @@ def extract_audio_optimized(video_path: str, progress_callback=None) -> str:
         print(f"❌ خطأ في استخراج الصوت: {e}")
         return None
 
-def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, cookies_content=None) -> str:
+def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, cookies_content=None, controller=None) -> str:
     """تحميل الصوت من يوتيوب مع دعم الكوكيز"""
     cookie_file_path = None
     try:
@@ -299,6 +306,14 @@ def download_youtube_audio_optimized(youtube_url: str, progress_callback=None, c
                 'preferredquality': '192',
             }],
         }
+        
+        # 🛑 إضافة Progress Hook للإيقاف
+        def stop_check_hook(d):
+            if controller and hasattr(controller, 'check_stop') and controller.check_stop():
+                raise Exception("STOP_REQUESTED")
+
+        if controller:
+            ydl_opts['progress_hooks'] = [stop_check_hook]
 
         # 🛡️ استراتيجية العميل (Client Strategy)
         if cookie_file_path:
