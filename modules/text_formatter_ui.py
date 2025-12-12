@@ -31,16 +31,49 @@ def render_text_formatting_options(original_text, segments):
             st.session_state.show_timestamped = True
     
     with col3:
-        # إظهار زر SRT دائماً إذا كانت segments موجودة
+        # إظهار أزرار SRT إذا كانت segments موجودة
         if segments and len(segments) > 0:
+            # زر SRT الأصلي
             srt_content = export_as_srt(segments)
             st.download_button(
-                label="📥 تحميل SRT",
+                label="📥 SRT أصلي",
                 data=srt_content,
                 file_name="subtitles.srt",
                 mime="text/plain",
-                help="ملف ترجمة للفيديو"
+                help="ملف ترجمة بالنص الأصلي",
+                key="srt_original"
             )
+            
+            # زر SRT مترجم
+            if st.button("🌐 SRT مترجم", help="ترجمة وتحميل SRT بالعربية", key="translate_srt"):
+                with st.spinner("جاري ترجمة segments..."):
+                    # ترجمة كل segment
+                    controller = st.session_state.get('controller')
+                    translated_segments = []
+                    
+                    for segment in segments:
+                        translated_text = translate_to_arabic(segment['text'], controller)
+                        translated_segments.append({
+                            'start': segment['start'],
+                            'end': segment['end'],
+                            'text': translated_text
+                        })
+                    
+                    # حفظ في session_state
+                    st.session_state.translated_segments = translated_segments
+                    st.session_state.show_srt_download = True
+            
+            # عرض زر التحميل بعد الترجمة
+            if st.session_state.get('show_srt_download', False):
+                srt_arabic = export_as_srt(st.session_state.translated_segments)
+                st.download_button(
+                    label="💾 تحميل SRT عربي",
+                    data=srt_arabic,
+                    file_name="subtitles_arabic.srt",
+                    mime="text/plain",
+                    help="ملف ترجمة بالعربية",
+                    key="srt_arabic_download"
+                )
         else:
             st.info("⏱️ Timestamps غير متاحة")
     
