@@ -1,22 +1,22 @@
 # Core Framework
-streamlit>=1.41.1  # Updated from 1.28.0 - fixes CVE-2024-42474 and CVE-2022-35918
+streamlit>=1.41.1
 
-# AI/ML Models
+# AI/ML Models - إصلاح التوافق
 faster-whisper==1.0.3
-ctranslate2==4.5.0
+ctranslate2>=3.20.0,<4.0.0
 
 # Translation
 deep-translator==1.11.4
 
 # Video/Audio Processing
-yt-dlp>=2024.12.6  # Updated from 2024.8.6 - latest stable
+yt-dlp>=2024.12.6
 moviepy==1.0.3
 pytube==15.0.0
 
 # Data Processing
-numpy>=1.24.3,<2.0.0  # Compatible with torch
+numpy>=1.24.3,<2.0.0
 
 # PyTorch (CPU-optimized versions)
-torch>=2.5.1  # Updated from 2.0.1 - fixes multiple CVEs including CVE-2024-31584
-torchvision>=0.20.1  # Updated from 0.15.2 - compatible with torch 2.5.1
-torchaudio>=2.5.1  # Updated from 2.0.2 - compatible with torch 2.5.1
+torch>=2.5.1
+torchvision>=0.20.1
+torchaudio>=2.5.1
