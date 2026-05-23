@@ -1,2 +1,3 @@
 ffmpeg
 libsndfile1
+pkg-config
